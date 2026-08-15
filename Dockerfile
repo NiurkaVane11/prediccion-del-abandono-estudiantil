@@ -16,6 +16,13 @@ COPY src/ ./src/
 COPY api/ ./api/
 COPY modelos/ ./modelos/
 
+# Creamos un usuario sin privilegios y le damos dueño del directorio de trabajo
+RUN groupadd -r appuser && useradd -r -g appuser appuser \
+    && chown -R appuser:appuser /app
+
+# Cambiamos al usuario no-root para el resto de la ejecución
+USER appuser
+
 EXPOSE 8000
 
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
