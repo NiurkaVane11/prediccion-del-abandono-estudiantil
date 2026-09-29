@@ -1,11 +1,15 @@
 """
 model.py
-Carga el modelo Keras entrenado y expone una función simple de predicción,
-para que la API (main.py) no tenga que preocuparse por los detalles de
-TensorFlow/Keras ni del preprocesamiento.
+Carga el modelo entrenado (en formato ONNX) y expone una función simple de
+predicción, para que la API (main.py) no tenga que preocuparse por los
+detalles de onnxruntime ni del preprocesamiento.
+
+El modelo se entrenó con Keras y se convirtió con src/convertir_a_onnx.py:
+en producción solo se necesita onnxruntime, no TensorFlow.
 """
 
-from tensorflow import keras
+import numpy as np
+import onnxruntime as ort
 
 from preprocessing import cargar_scaler, cargar_columnas_esperadas, preparar_input
 from config import RUTA_MODELO, RUTA_SCALER, RUTA_COLUMNAS, UMBRAL_DECISION
@@ -23,14 +27,16 @@ class ModeloDropout:
         ruta_scaler: str = RUTA_SCALER,
         ruta_columnas: str = RUTA_COLUMNAS,
     ):
-        self.modelo = keras.models.load_model(ruta_modelo)
+        self.modelo = ort.InferenceSession(ruta_modelo)
         self.scaler = cargar_scaler(ruta_scaler)
         self.columnas_esperadas = cargar_columnas_esperadas(ruta_columnas)
 
     def predecir(self, datos: dict, umbral: float = UMBRAL_DECISION) -> dict:
         X = preparar_input(datos, self.scaler, self.columnas_esperadas)
 
-        probabilidad = float(self.modelo.predict(X, verbose=0).ravel()[0])
+        # ONNX espera float32 (el scaler devuelve float64)
+        salida = self.modelo.run(None, {"input": X.astype(np.float32)})[0]
+        probabilidad = float(salida.ravel()[0])
         prediccion = "Dropout" if probabilidad >= umbral else "Graduate"
 
         if probabilidad >= 0.7:

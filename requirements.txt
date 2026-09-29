@@ -1,3 +1,5 @@
+# Dependencias de PRODUCCIÓN (las que instala el Dockerfile).
+# Sin TensorFlow: la API predice con onnxruntime.
 fastapi==0.141.1
 uvicorn==0.52.1
 pydantic==2.13.4
@@ -5,7 +7,5 @@ joblib==1.5.3
 scikit-learn==1.9.0
 pandas==3.0.5
 numpy==2.5.1
-tensorflow==2.21.0
-pytest==9.1.1
-httpx==0.28.1
+onnxruntime==1.30.0
 slowapi==0.1.9

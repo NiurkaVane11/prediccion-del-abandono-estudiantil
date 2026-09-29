@@ -4,19 +4,20 @@
 
 Modelo de aprendizaje automático para predecir la deserción estudiantil utilizando análisis exploratorio de datos (EDA) y algoritmos de clasificación.
 
-**Modelo:** red neuronal (Keras) con AUC-ROC 0.9443, servido vía API REST con FastAPI.
+**Modelo:** red neuronal (Keras) con AUC-ROC 0.9443, exportada a ONNX y servida vía API REST con FastAPI + onnxruntime.
 
 ## Estructura del proyecto
 
 ```
 ├── api/            # Endpoints FastAPI (/, /salud, /predecir)
-├── src/             # Preprocesamiento (preprocessing.py) y clase del modelo (model.py)
-├── modelos/         # Modelo entrenado, scaler y columnas de features
+├── src/             # Preprocesamiento, clase del modelo y conversión Keras -> ONNX
+├── modelos/         # Modelo Keras (.keras), versión de producción (.onnx), scaler y columnas
 ├── notebooks/       # EDA y entrenamiento
-├── deploy/          # Script y README del deploy a Hugging Face Spaces
-├── tests/           # Suite de pytest (17 tests)
+├── tests/           # Suite de pytest (18 tests)
 ├── Dockerfile
-└── requirements.txt
+├── render.yaml      # Configuración del servicio en Render
+├── requirements.txt       # Dependencias de producción (sin TensorFlow)
+└── requirements-dev.txt   # Producción + TensorFlow, ONNX y herramientas de test
 ```
 
 ## Instalación local
@@ -24,8 +25,18 @@ Modelo de aprendizaje automático para predecir la deserción estudiantil utiliz
 ```
 python -m venv venv
 source venv/Scripts/activate  # Git Bash en Windows
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+## Modelo en producción: ONNX
+
+La red se entrena con Keras, pero la API predice con **onnxruntime** (~50 MB) en vez de TensorFlow (~1.5 GB): la imagen Docker es mucho más liviana, arranca más rápido y cabe en planes gratuitos con 512 MB de RAM.
+
+Si se reentrena el modelo, hay que regenerar el `.onnx`:
+```
+python src/convertir_a_onnx.py
+```
+El script verifica que ONNX y Keras den la misma predicción, y el test `test_modelo_onnx_equivale_a_keras` lo vuelve a comprobar en cada CI.
 
 ## Docker
 
@@ -74,7 +85,7 @@ docker run -p 8000:8000 -e API_KEY=tu-clave-secreta -e LOG_LEVEL=WARNING dropout
 pytest -v
 ```
 
-17 tests: preprocesamiento (3), modelo (3), API (11, incluye autenticación, validación, rate limiting y request ID).
+18 tests: preprocesamiento (3), modelo (4, incluye equivalencia ONNX vs Keras), API (11, incluye autenticación, validación, rate limiting y request ID).
 
 Los tests usan una `API_KEY` de prueba definida en `tests/conftest.py`, por eso no hace falta configurar ninguna clave para correrlos (ni en local ni en GitHub Actions).
 
@@ -82,19 +93,14 @@ Los tests usan una `API_KEY` de prueba definida en `tests/conftest.py`, por eso 
 
 Cada push o pull request a `main` corre automáticamente la suite de tests vía GitHub Actions y valida el build de Docker. En los push a `main`, si todo pasa, se despliega en Hugging Face Spaces.
 
-## Deploy (Hugging Face Spaces)
+## Deploy (Render)
 
-Cada push a `main` que pasa los tests y el build de Docker se despliega automáticamente en un Hugging Face Space (job `deploy` de GitHub Actions, script `deploy/subir_a_hf.py`). Solo se suben `Dockerfile`, `requirements.txt`, `api/`, `src/` y `modelos/`.
+La API está desplegada en [Render](https://render.com) (plan gratuito) usando el `Dockerfile` y la configuración de `render.yaml`:
 
-Configuración necesaria en GitHub (Settings → Secrets and variables → Actions):
-
-| Tipo | Nombre | Valor |
-|---|---|---|
-| Secret | `HF_TOKEN` | Token de Hugging Face con permiso *write* |
-| Secret | `API_KEY` | Clave que exigirá la API en producción |
-| Variable | `HF_SPACE_ID` | `usuario-hf/nombre-del-space` |
-
-Mientras `HF_SPACE_ID` no exista, el job de deploy se omite y el CI sigue en verde.
+- **Auto-deploy:** Render redespliega en cada push a `main`, solo después de que pasan los checks de GitHub Actions.
+- **Health check:** Render consulta `/salud` antes de enviar tráfico a una versión nueva.
+- **`API_KEY`:** se configura como variable de entorno en el panel de Render (nunca en el repo).
+- **Plan gratuito:** el servicio se duerme tras ~15 min sin uso; la primera request después tarda unos segundos en responder.
 
 ## Roadmap
 

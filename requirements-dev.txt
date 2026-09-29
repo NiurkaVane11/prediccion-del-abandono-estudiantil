@@ -1,0 +1,6 @@
+# Dependencias de DESARROLLO: producción + tests + reentrenar/convertir el modelo.
+-r requirements.txt
+tensorflow==2.21.0
+onnx==1.23.1
+pytest==9.1.1
+httpx==0.28.1

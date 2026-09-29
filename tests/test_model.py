@@ -58,3 +58,13 @@ def test_prediccion_lanza_error_si_faltan_columnas():
 
     with pytest.raises(ValueError):
         modelo.predecir(datos_incompletos)
+
+def test_modelo_onnx_equivale_a_keras():
+    # Garantiza que modelo_dropout.onnx (producción) predice lo mismo que el
+    # modelo Keras original. Si alguien reentrena y olvida reconvertir, falla.
+    from tensorflow import keras
+    from config import RUTA_MODELO_KERAS, RUTA_MODELO
+    from convertir_a_onnx import verificar_equivalencia
+
+    modelo_keras = keras.models.load_model(RUTA_MODELO_KERAS)
+    assert verificar_equivalencia(modelo_keras, RUTA_MODELO) < 1e-5

@@ -2,10 +2,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Dependencias del sistema necesarias para tensorflow/scikit-learn
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Ya no se instala build-essential: sin TensorFlow, todas las dependencias
+# vienen precompiladas (wheels) y la imagen queda mucho más liviana.
 
 # Copiamos requirements primero para aprovechar la cache de Docker
 COPY requirements.txt .
@@ -16,9 +14,7 @@ COPY src/ ./src/
 COPY api/ ./api/
 COPY modelos/ ./modelos/
 
-# Creamos un usuario sin privilegios y le damos dueño del directorio de trabajo.
-# UID 1000 porque Hugging Face Spaces ejecuta el contenedor con ese UID; así
-# el usuario coincide y tiene un home donde Keras puede escribir su caché.
+# Creamos un usuario sin privilegios y le damos dueño del directorio de trabajo
 RUN useradd -m -u 1000 appuser \
     && chown -R appuser:appuser /app
 
@@ -32,4 +28,7 @@ EXPOSE 8000
 
 # Forma "shell" para que ${PORT} se expanda; exec hace que uvicorn reciba
 # directamente las señales de apagado del contenedor.
-CMD exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT}
+# --proxy-headers: en Render las requests llegan a través de su proxy; así
+# uvicorn toma la IP real del cliente de X-Forwarded-For y el rate limit
+# funciona por usuario (si no, todos compartirían la IP del proxy).
+CMD exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips="*"
