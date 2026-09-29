@@ -2,7 +2,7 @@ import os
 
 import pytest
 from fastapi.testclient import TestClient
-from api.main import app, limiter
+from api.main import app, limiter, EJEMPLO_ESTUDIANTE
 
 client = TestClient(app)
 
@@ -17,36 +17,8 @@ def reiniciar_rate_limit():
     limiter.reset()
     yield
 
-FEATURES_ESTUDIANTE = {
-    "Marital status": 1,
-    "Application mode": 1,
-    "Application order": 1,
-    "Course": 9500,
-    "Daytime/evening attendance": 1,
-    "Previous qualification": 1,
-    "Nacionality": 1,
-    "Mother's qualification": 1,
-    "Father's qualification": 1,
-    "Mother's occupation": 1,
-    "Father's occupation": 1,
-    "Displaced": 0,
-    "Educational special needs": 0,
-    "Debtor": 0,
-    "Tuition fees up to date": 1,
-    "Gender": 0,
-    "Scholarship holder": 0,
-    "Age at enrollment": 19,
-    "International": 0,
-    "Curricular units 1st sem (credited)": 0,
-    "Curricular units 1st sem (enrolled)": 6,
-    "Curricular units 1st sem (evaluations)": 6,
-    "Curricular units 1st sem (approved)": 6,
-    "Curricular units 1st sem (grade)": 14.0,
-    "Curricular units 1st sem (without evaluations)": 0,
-    "Unemployment rate": 10.8,
-    "Inflation rate": 1.4,
-    "GDP": 1.74,
-}
+# Mismo estudiante real (test set) que aparece de ejemplo en /docs
+FEATURES_ESTUDIANTE = EJEMPLO_ESTUDIANTE
 
 
 def test_raiz_responde_ok():
@@ -69,6 +41,16 @@ def test_predecir_con_datos_validos():
     assert "probabilidad_dropout" in data
     assert "prediccion" in data
     assert "riesgo" in data
+
+
+def test_predecir_estudiante_real_es_graduate():
+    # Este estudiante se graduó; el modelo le da ~4% de probabilidad de
+    # abandono. Si el modelo o la conversión ONNX se rompen, esto falla.
+    response = client.post("/predecir", json={"features": FEATURES_ESTUDIANTE}, headers=HEADERS)
+    data = response.json()
+    assert data["prediccion"] == "Graduate"
+    assert data["riesgo"] == "bajo"
+    assert data["probabilidad_dropout"] < 0.1
 
 
 def test_predecir_con_columnas_faltantes():
