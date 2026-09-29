@@ -34,3 +34,28 @@ jobs:
 
       - name: Build imagen Docker
         run: docker build -t dropout-api .
+
+  deploy:
+    # Solo despliega en push a main (no en pull requests), después de que
+    # pasaron los tests y el build de Docker, y solo si ya configuraste
+    # la variable HF_SPACE_ID en GitHub (antes de eso el CI sigue en verde).
+    needs: docker-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.HF_SPACE_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar cliente de Hugging Face
+        run: pip install huggingface_hub
+
+      - name: Subir a Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ vars.HF_SPACE_ID }}
+          API_KEY: ${{ secrets.API_KEY }}
+        run: python deploy/subir_a_hf.py

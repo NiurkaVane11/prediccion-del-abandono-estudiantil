@@ -106,3 +106,18 @@ def test_predecir_supera_rate_limit():
         assert response.status_code == 200
     response = client.post("/predecir", json={"features": FEATURES_ESTUDIANTE}, headers=HEADERS)
     assert response.status_code == 429
+
+
+def test_respuesta_incluye_request_id():
+    response = client.get("/salud")
+    assert len(response.headers["X-Request-ID"]) == 12
+
+
+def test_request_id_del_cliente_se_respeta_si_es_valido():
+    response = client.get("/salud", headers={"X-Request-ID": "mi-id-123"})
+    assert response.headers["X-Request-ID"] == "mi-id-123"
+
+
+def test_request_id_malicioso_se_reemplaza():
+    response = client.get("/salud", headers={"X-Request-ID": "x status=200 FALSO"})
+    assert response.headers["X-Request-ID"] != "x status=200 FALSO"
