@@ -13,7 +13,7 @@ Modelo de aprendizaje automático para predecir la deserción estudiantil utiliz
 ├── src/             # Preprocesamiento (preprocessing.py) y clase del modelo (model.py)
 ├── modelos/         # Modelo entrenado, scaler y columnas de features
 ├── notebooks/       # EDA y entrenamiento
-├── tests/           # Suite de pytest (10 tests)
+├── tests/           # Suite de pytest (14 tests)
 ├── Dockerfile
 └── requirements.txt
 ```
@@ -33,12 +33,25 @@ Construir la imagen:
 docker build -t dropout-api .
 ```
 
-Correr el contenedor:
+Correr el contenedor (la API no arranca sin `API_KEY`):
 ```
-docker run -p 8000:8000 dropout-api
+docker run -p 8000:8000 -e API_KEY=tu-clave-secreta dropout-api
 ```
 
 Luego abrir http://localhost:8000/docs
+
+## Seguridad
+
+- **API Key:** `/predecir` exige el header `X-API-Key` con el valor de la variable de entorno `API_KEY`. Sin ella, o con una incorrecta, responde `401`. La clave nunca se escribe en el código.
+- **Rate limiting:** máximo 10 requests por minuto por IP en `/predecir`; al superarlo responde `429`.
+- **Validación de entrada:** el body debe traer exactamente las 28 features con las que se entrenó el modelo (`modelos/columnas_features.pkl`); si falta o sobra alguna responde `422`.
+- **Errores internos:** se registran en el log, pero al cliente solo se le devuelve un mensaje genérico (`500`), sin detalles internos.
+- **Contenedor sin root:** la imagen Docker corre con un usuario sin privilegios (`appuser`).
+
+Ejemplo de request:
+```
+curl -X POST http://localhost:8000/predecir   -H "Content-Type: application/json"   -H "X-API-Key: tu-clave-secreta"   -d '{"features": {"Marital status": 1, "...": 0}}'
+```
 
 ## Tests
 
@@ -46,7 +59,9 @@ Luego abrir http://localhost:8000/docs
 pytest -v
 ```
 
-10 tests: preprocesamiento (3), modelo (3), API (4).
+14 tests: preprocesamiento (3), modelo (3), API (8, incluye autenticación, validación y rate limiting).
+
+Los tests usan una `API_KEY` de prueba definida en `tests/conftest.py`, por eso no hace falta configurar ninguna clave para correrlos (ni en local ni en GitHub Actions).
 
 ## CI/CD
 
@@ -58,6 +73,6 @@ Cada push o pull request a `main` corre automáticamente la suite de tests vía 
 - [x] Fase 2: Dockerización
 - [x] Fase 3: Testing
 - [x] Fase 4: CI/CD
-- [ ] Fase 5: Seguridad
+- [x] Fase 5: Seguridad
 - [ ] Fase 6: Deploy + Logging
 - [ ] Fase 7: Documentación

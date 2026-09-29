@@ -59,9 +59,10 @@ def verificar_api_key(api_key: str = Security(api_key_header)):
 
 
 # ---------- Features esperadas ----------
-FEATURES_ESPERADAS = {
-    "feature_1", "feature_2", "feature_3",  # ... completa con las 28
-}
+# Se toman del mismo archivo con el que se entrenó el modelo
+# (modelos/columnas_features.pkl), así no hay una lista duplicada a mano
+# que pueda desincronizarse si el modelo se reentrena.
+FEATURES_ESPERADAS = frozenset(modelo_dropout.columnas_esperadas)
 
 
 class EstudianteInput(BaseModel):
