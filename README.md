@@ -4,6 +4,8 @@
 
 Modelo de aprendizaje automático para predecir la deserción estudiantil utilizando análisis exploratorio de datos (EDA) y algoritmos de clasificación.
 
+**API en producción:** https://prediccion-abandono-api.onrender.com/docs
+
 **Modelo:** red neuronal (Keras) con AUC-ROC 0.9443, exportada a ONNX y servida vía API REST con FastAPI + onnxruntime.
 
 ## Estructura del proyecto
@@ -95,7 +97,7 @@ Cada push o pull request a `main` corre automáticamente la suite de tests vía 
 
 ## Deploy (Render)
 
-La API está desplegada en [Render](https://render.com) (plan gratuito) usando el `Dockerfile` y la configuración de `render.yaml`:
+La API está desplegada en [Render](https://render.com) (plan gratuito) en https://prediccion-abandono-api.onrender.com usando el `Dockerfile` y la configuración de `render.yaml`:
 
 - **Auto-deploy:** Render redespliega en cada push a `main`, solo después de que pasan los checks de GitHub Actions.
 - **Health check:** Render consulta `/salud` antes de enviar tráfico a una versión nueva.
@@ -109,5 +111,5 @@ La API está desplegada en [Render](https://render.com) (plan gratuito) usando e
 - [x] Fase 3: Testing
 - [x] Fase 4: CI/CD
 - [x] Fase 5: Seguridad
-- [ ] Fase 6: Deploy + Logging
+- [x] Fase 6: Deploy + Logging
 - [ ] Fase 7: Documentación
