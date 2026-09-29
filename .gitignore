@@ -1,3 +1,6 @@
 venv/
 __pycache__/
 .ipynb_checkpoints/
+
+# Secrets locales de Streamlit
+.streamlit/secrets.toml

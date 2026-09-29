@@ -11,7 +11,7 @@ API que predice el riesgo de que un estudiante universitario **abandone** sus es
 | **Modelo** | Red neuronal (Keras), servida en formato ONNX |
 | **AUC-ROC (test)** | 0.946 |
 | **Recall Dropout** | 0.88 (detecta ~88 de cada 100 estudiantes que abandonan) |
-| **Stack** | FastAPI · onnxruntime · Docker · GitHub Actions · Render |
+| **Stack** | FastAPI · onnxruntime · Streamlit · Docker · GitHub Actions · Render |
 
 Detalles del modelo, datos, métricas y limitaciones: **[Model Card](docs/MODEL_CARD.md)**.
 
@@ -46,6 +46,23 @@ Niveles de riesgo: **bajo** (< 0.4), **medio** (0.4 – 0.7), **alto** (≥ 0.7)
 
 > ⚠️ Las variables categóricas usan la codificación del dataset de entrenamiento (ej: `Course` va de 1 a 17). Ver los rangos válidos en la [model card](docs/MODEL_CARD.md#anexo-rangos-de-las-variables).
 
+## Interfaz web (Streamlit)
+
+`app/streamlit_app.py` es un formulario pensado para usuarios no técnicos (por ejemplo, tutores): carrera por nombre, casillas para beca/deudas/matrícula y los resultados del 1er semestre. Muestra la probabilidad con un semáforo (🟢 bajo · 🟡 medio · 🔴 alto).
+
+- **No carga el modelo:** llama a la API de Render. La `API_KEY` va en los *secrets* de Streamlit, así el visitante puede usar la app sin tener la clave.
+- **Carreras:** el código `Course` (1–17) se muestra con el nombre de la carrera. El mapeo se verificó con los datos (los códigos 3 y 17 son 100% turno noche y el 12, Enfermería, es la carrera más grande, igual que en el dataset original de UCI). El turno se deduce de la carrera.
+- **Campos no preguntados** (estudios y ocupación de los padres, modalidad de ingreso, nacionalidad, contexto económico) se completan con la moda o la mediana de los datos de entrenamiento.
+- **Rate limit compartido:** todas las consultas de la app salen de la misma IP (el servidor de Streamlit), así que comparten el límite de 10 por minuto de la API. Suficiente para una demo.
+
+Correr local (con la API corriendo en otra terminal):
+```
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml   # y poner API_URL / API_KEY
+streamlit run app/streamlit_app.py
+```
+
+Deploy: [Streamlit Community Cloud](https://streamlit.io/cloud) → *Create app* → este repo, rama `main`, archivo `app/streamlit_app.py`, y en *Secrets* `API_KEY = "..."`. Las dependencias de la app están en `app/requirements.txt`.
+
 ## Arquitectura
 
 ```mermaid
@@ -62,7 +79,8 @@ flowchart LR
     end
     O -->|git push main| T
     D -->|checks OK → auto-deploy| API
-    U[Cliente] -->|X-API-Key| API
+    S[Streamlit<br/>interfaz web] -->|X-API-Key| API
+    U[Otros clientes] -->|X-API-Key| API
 ```
 
 **Flujo de una predicción:** request → validación (API key, rate limit, 28 features) → preprocesamiento (mismo orden de columnas y mismo `StandardScaler` del entrenamiento) → modelo ONNX → probabilidad + clase + riesgo.
@@ -73,6 +91,7 @@ flowchart LR
 
 ```
 ├── api/main.py            # API FastAPI: endpoints, seguridad, logging, docs
+├── app/                   # Interfaz Streamlit (streamlit_app.py, cliente.py, requirements.txt)
 ├── src/
 │   ├── config.py          # Rutas y constantes
 │   ├── preprocessing.py   # Mismo preprocesamiento que en el entrenamiento
@@ -131,6 +150,7 @@ pytest -v
 |---|---|
 | `test_preprocessing.py` | Orden de columnas, columnas faltantes y tipo de salida |
 | `test_model.py` | Carga del modelo, formato de la predicción y **equivalencia ONNX vs Keras** |
+| `test_cliente.py` | Formulario → 28 features, turno según carrera, mensajes de error y **formulario de punta a punta contra la API** |
 | `test_api.py` | Endpoints, predicción de un estudiante real, **API key**, **validación**, **rate limit** y **request ID** |
 
 Los tests usan una `API_KEY` de prueba definida en `tests/conftest.py`: no hace falta configurar ninguna clave para correrlos.
