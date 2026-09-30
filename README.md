@@ -4,6 +4,8 @@
 
 API que predice el riesgo de que un estudiante universitario **abandone** sus estudios, usando la información disponible al terminar el **1er semestre**. El objetivo es detectar a tiempo a quién ofrecer apoyo (tutorías, orientación, ayuda económica).
 
+**🖥️ App web (para tutores):** https://prediccion-abandono.streamlit.app
+
 **🌐 API en producción:** https://prediccion-abandono-api.onrender.com/docs
 
 | | |
@@ -48,6 +50,8 @@ Niveles de riesgo: **bajo** (< 0.4), **medio** (0.4 – 0.7), **alto** (≥ 0.7)
 
 ## Interfaz web (Streamlit)
 
+**🖥️ En línea:** https://prediccion-abandono.streamlit.app
+
 `app/streamlit_app.py` es un formulario pensado para usuarios no técnicos (por ejemplo, tutores): carrera por nombre, casillas para beca/deudas/matrícula y los resultados del 1er semestre. Muestra la probabilidad con un semáforo (🟢 bajo · 🟡 medio · 🔴 alto).
 
 - **No carga el modelo:** llama a la API de Render. La `API_KEY` va en los *secrets* de Streamlit, así el visitante puede usar la app sin tener la clave.
@@ -61,7 +65,7 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml   # y poner API_URL /
 streamlit run app/streamlit_app.py
 ```
 
-Deploy: [Streamlit Community Cloud](https://streamlit.io/cloud) → *Create app* → este repo, rama `main`, archivo `app/streamlit_app.py`, y en *Secrets* `API_KEY = "..."`. Las dependencias de la app están en `app/requirements.txt`.
+Deploy: [Streamlit Community Cloud](https://streamlit.io/cloud) → *Create app* → este repo, rama `main`, archivo `app/streamlit_app.py`, y en *Secrets* dos líneas: `API_URL = "https://prediccion-abandono-api.onrender.com"` y `API_KEY = "..."` (la misma clave que en Render; si falta la línea `API_KEY` la app muestra "Falta configurar `API_KEY`"). Las dependencias de la app están en `app/requirements.txt`.
 
 ## Arquitectura
 
